@@ -1,0 +1,7 @@
+node_modules/
+/dist/
+activation.txt
+build/fastapibackend/
+
+# Firebase credentials - sensitive files
+backend/firebase-service-account.json

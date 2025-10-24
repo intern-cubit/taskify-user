@@ -1,0 +1,73 @@
+{
+    "name": "taskify",
+    "version": "0.0.2",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "build": "electron-builder",
+        "dist": "electron-builder --dir",
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "build:publish": "electron-builder --publish always"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "description": "",
+    "devDependencies": {
+        "concurrently": "^9.2.1",
+        "electron": "^29.4.0",
+        "electron-builder": "^26.0.12",
+        "wait-on": "^9.0.1"
+    },
+    "dependencies": {
+        "electron-is-dev": "^3.0.1",
+        "electron-log": "^5.4.1",
+        "electron-updater": "^6.6.2",
+        "node-fetch": "^3.3.2"
+    },
+    "build": {
+        "appId": "com.cubitdynamics.taskify",
+        "productName": "Taskify",
+        "directories": {
+            "output": "dist"
+        },
+        "files": [
+            "main.js",
+            "preload.js",
+            "package.json",
+            "build/**/*",
+            "backend/dist/fastapibackend.exe",
+            {
+                "from": "backend/dist",
+                "to": "backend/dist",
+                "filter": [
+                    "**/*"
+                ]
+            },
+            "frontend/dist/**/*"
+        ],
+        "extraResources": [
+            {
+                "from": "backend/dist/fastapibackend.exe",
+                "to": "fastapibackend.exe"
+            }
+        ],
+        "win": {
+            "target": "nsis",
+            "icon": "build/icon.ico"
+        },
+        "nsis": {
+            "installerIcon": "build/installerIcon.ico",
+            "uninstallerIcon": "build/uninstallerIcon.ico",
+            "allowToChangeInstallationDirectory": true,
+            "oneClick": false
+        },
+        "publish": {
+            "provider": "github",
+            "owner": "intern-cubit",
+            "repo": "taskify-user",
+            "releaseType": "release",
+            "publishAutoUpdate": true
+        }
+    }
+}

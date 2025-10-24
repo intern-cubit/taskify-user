@@ -1,0 +1,10 @@
+selenium>=4.15.0,<5.0.0
+pandas
+webdriver-manager>=4.0.0
+fastapi
+uvicorn[standard]
+python-multipart
+undetected-chromedriver>=3.5.5
+firebase-admin>=6.5.0
+appdirs
+setuptools>=75.0.0
