@@ -633,64 +633,13 @@ def check_for_back_to_home_page(driver):
         safe_print(f"[WARNING] Error checking for back to home page: {str(e)[:50]}")
         return False
 
-def run_automation_internal(retry_count=0, max_retries=2):
+def check_and_close_alert_popup(driver):
     """
-    Internal automation function that can be retried.
-    Returns result dict with success status.
+    Helper function to check for and close alert popup.
+    This popup can appear at various points in the workflow.
+    Returns True if popup was found and closed, False otherwise.
     """
-    global driver_instance
-    
-    driver = driver_instance
-    
-    # Check for "back to home page" before starting
-    if check_for_back_to_home_page(driver):
-        safe_print("[AUTOMATION] Returned to home page, continuing automation...")
-    
-    # Step 1: Click Dashboard Pendency button
-    safe_print("[AUTOMATION] Looking for Dashboard Pendency button...")
     try:
-        # Try to find by title attribute first (more reliable)
-        dashboard_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[@title='Dashboard Pendency']"))
-        )
-        safe_print("[AUTOMATION] Found Dashboard Pendency button (by title)!")
-        dashboard_button.click()
-        safe_print("[SUCCESS] ✅ Clicked Dashboard Pendency button!")
-        
-        # Wait for page transition
-        time.sleep(3)
-        safe_print("[AUTOMATION] Waiting for page to load...")
-        
-    except TimeoutException:
-        safe_print("[ERROR] Dashboard Pendency button not found within timeout")
-        
-        # Check if we need to go back to home page and retry
-        if retry_count < max_retries:
-            safe_print(f"[AUTOMATION] Checking for 'Back to Home Page' button... (Retry {retry_count + 1}/{max_retries})")
-            if check_for_back_to_home_page(driver):
-                safe_print("[AUTOMATION] Retrying automation after returning to home page...")
-                return run_automation_internal(retry_count + 1, max_retries)
-        
-        # If still can't find it, ask user to login
-        return {
-            "success": False,
-            "message": "⚠️ Dashboard Pendency button not found. Please ensure you are logged in correctly. If you see a login page, please login and try again.",
-            "status": "button_not_found",
-            "action_required": "login"
-        }
-    
-    # Continue with remaining automation steps
-    return execute_remaining_steps(driver, retry_count, max_retries)
-
-def execute_remaining_steps(driver, retry_count=0, max_retries=2):
-    """Execute automation steps 2-17"""
-    
-    # Step 1.5: Handle optional alert popup after Dashboard Pendency click
-    safe_print("[AUTOMATION] Checking for optional alert popup...")
-    try:
-        # Give a short wait to see if the popup appears
-        time.sleep(2)
-        
         # Try to find the alert dialog
         alert_dialog = driver.find_elements(
             By.XPATH,
@@ -744,12 +693,76 @@ def execute_remaining_steps(driver, retry_count=0, max_retries=2):
             if close_clicked:
                 time.sleep(2)
                 safe_print("[INFO] Alert popup closed successfully")
+                return True
         else:
-            safe_print("[INFO] ℹ️ No alert popup found, continuing to next step")
+            safe_print("[INFO] ℹ️ No alert popup found")
+            return False
             
     except Exception as e:
         safe_print(f"[INFO] No alert popup detected or error checking: {e}")
-        # Not a critical error, continue with automation
+        return False
+
+def run_automation_internal(retry_count=0, max_retries=2):
+    """
+    Internal automation function that can be retried.
+    Returns result dict with success status.
+    """
+    global driver_instance
+    
+    driver = driver_instance
+    
+    # Check for "back to home page" before starting
+    if check_for_back_to_home_page(driver):
+        safe_print("[AUTOMATION] Returned to home page, continuing automation...")
+    
+    # Step 0.5: Check for alert popup BEFORE clicking Dashboard Pendency
+    safe_print("[AUTOMATION] Checking for alert popup before Dashboard Pendency click...")
+    time.sleep(1)  # Brief wait to see if popup is already there
+    check_and_close_alert_popup(driver)
+    
+    # Step 1: Click Dashboard Pendency button
+    safe_print("[AUTOMATION] Looking for Dashboard Pendency button...")
+    try:
+        # Try to find by title attribute first (more reliable)
+        dashboard_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[@title='Dashboard Pendency']"))
+        )
+        safe_print("[AUTOMATION] Found Dashboard Pendency button (by title)!")
+        dashboard_button.click()
+        safe_print("[SUCCESS] ✅ Clicked Dashboard Pendency button!")
+        
+        # Wait for page transition
+        time.sleep(3)
+        safe_print("[AUTOMATION] Waiting for page to load...")
+        
+    except TimeoutException:
+        safe_print("[ERROR] Dashboard Pendency button not found within timeout")
+        
+        # Check if we need to go back to home page and retry
+        if retry_count < max_retries:
+            safe_print(f"[AUTOMATION] Checking for 'Back to Home Page' button... (Retry {retry_count + 1}/{max_retries})")
+            if check_for_back_to_home_page(driver):
+                safe_print("[AUTOMATION] Retrying automation after returning to home page...")
+                return run_automation_internal(retry_count + 1, max_retries)
+        
+        # If still can't find it, ask user to login
+        return {
+            "success": False,
+            "message": "⚠️ Dashboard Pendency button not found. Please ensure you are logged in correctly. If you see a login page, please login and try again.",
+            "status": "button_not_found",
+            "action_required": "login"
+        }
+    
+    # Continue with remaining automation steps
+    return execute_remaining_steps(driver, retry_count, max_retries)
+
+def execute_remaining_steps(driver, retry_count=0, max_retries=2):
+    """Execute automation steps 2-17"""
+    
+    # Step 1.5: Handle optional alert popup after Dashboard Pendency click
+    safe_print("[AUTOMATION] Checking for optional alert popup after Dashboard Pendency click...")
+    time.sleep(2)  # Give popup time to appear
+    check_and_close_alert_popup(driver)
     
     # Step 2: Click Dealer Registration span (if not already expanded)
     safe_print("[AUTOMATION] Looking for Dealer Registration element...")
@@ -914,6 +927,99 @@ def execute_remaining_steps(driver, retry_count=0, max_retries=2):
                 "message": "Pending Applications table or Approve button not found. The page may not have loaded correctly.",
                 "status": "table_not_found"
             }
+        
+        # Step 5.5: Handle optional VLTD (Vehicle Location Tracking Device) popup
+        safe_print("[AUTOMATION] Checking for optional VLTD popup...")
+        try:
+            # Give a short wait to see if the VLTD popup appears
+            time.sleep(2)
+            
+            # Try to find the VLTD dialog by its title or ID
+            vltd_dialog = driver.find_elements(
+                By.XPATH,
+                "//div[contains(@class, 'ui-dialog') and contains(@style, 'display: block')]//span[contains(text(), 'Vehicle Location Tracking Device')]"
+            )
+            
+            if vltd_dialog and len(vltd_dialog) > 0:
+                safe_print("[AUTOMATION] Found VLTD popup! Attempting to click OK...")
+                
+                # First, remove any overlays that might be blocking
+                driver.execute_script("""
+                    var overlays = document.querySelectorAll('.ui-widget-overlay, .ui-dialog-mask');
+                    overlays.forEach(function(overlay) {
+                        overlay.style.display = 'none';
+                    });
+                """)
+                safe_print("[AUTOMATION] Removed overlay elements")
+                time.sleep(1)
+                
+                # Try multiple strategies to click the OK button
+                ok_clicked = False
+                
+                # Strategy 1: Find OK button by ID (j_idt124)
+                try:
+                    ok_button = WebDriverWait(driver, 3).until(
+                        EC.element_to_be_clickable((
+                            By.ID,
+                            "j_idt124"
+                        ))
+                    )
+                    ok_button.click()
+                    safe_print("[SUCCESS] ✅ Clicked VLTD OK button using ID!")
+                    ok_clicked = True
+                except:
+                    safe_print("[INFO] Could not click OK by ID, trying alternatives...")
+                
+                # Strategy 2: Find OK button by text within visible dialog
+                if not ok_clicked:
+                    try:
+                        ok_button = WebDriverWait(driver, 3).until(
+                            EC.element_to_be_clickable((
+                                By.XPATH,
+                                "//div[contains(@class, 'ui-dialog') and contains(@style, 'display: block')]//button[contains(@class, 'ui-button') and .//span[text()='OK']]"
+                            ))
+                        )
+                        ok_button.click()
+                        safe_print("[SUCCESS] ✅ Clicked VLTD OK button using text!")
+                        ok_clicked = True
+                    except:
+                        safe_print("[INFO] Could not click OK by text, trying JavaScript...")
+                
+                # Strategy 3: Use JavaScript click if regular click didn't work
+                if not ok_clicked:
+                    try:
+                        ok_button = driver.find_element(By.ID, "j_idt124")
+                        driver.execute_script("arguments[0].click();", ok_button)
+                        safe_print("[SUCCESS] ✅ Clicked VLTD OK button using JavaScript!")
+                        ok_clicked = True
+                    except:
+                        safe_print("[WARNING] Could not click VLTD OK button with JavaScript")
+                
+                # Strategy 4: Try finding by button text with check icon
+                if not ok_clicked:
+                    try:
+                        ok_button = driver.find_element(
+                            By.XPATH,
+                            "//button[.//span[contains(@class, 'ui-icon-check')] and .//span[text()='OK']]"
+                        )
+                        driver.execute_script("arguments[0].click();", ok_button)
+                        safe_print("[SUCCESS] ✅ Clicked VLTD OK button using icon+text!")
+                        ok_clicked = True
+                    except:
+                        safe_print("[WARNING] Could not find OK button by icon+text")
+                
+                # Wait for dialog to disappear
+                if ok_clicked:
+                    time.sleep(2)
+                    safe_print("[INFO] VLTD popup handled successfully")
+                else:
+                    safe_print("[WARNING] ⚠️ Could not click VLTD OK button - may cause issues")
+            else:
+                safe_print("[INFO] ℹ️ No VLTD popup found, continuing to next step")
+                
+        except Exception as e:
+            safe_print(f"[INFO] No VLTD popup detected or error checking: {e}")
+            # Not a critical error, continue with automation
         
         # Step 6: Click the verification checkbox (only if unchecked)
         safe_print("[AUTOMATION] Looking for the verification checkbox...")
